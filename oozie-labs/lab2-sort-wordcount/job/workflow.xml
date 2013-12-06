@@ -1,0 +1,89 @@
+<workflow-app xmlns="uri:oozie:workflow:0.1" name="sorted-word-count">
+    <start to="wordcount-node"/>
+    <action name="wordcount-node">
+        <map-reduce>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <prepare>
+                <delete path="${wordCountOutputDir}"/>
+            </prepare>
+            <configuration>
+                <property>
+                    <name>mapred.mapper.class</name>
+                    <value>hadoop.dev.wordcount.mapred.WordMapper</value>
+                </property>
+                <property>
+                    <name>mapred.mapoutput.key.class</name>
+                    <value>org.apache.hadoop.io.Text</value>
+                </property>
+                <property>
+                    <name>mapred.mapoutput.value.class</name>
+                    <value>org.apache.hadoop.io.IntWritable</value>
+                </property>
+                <property>
+                    <name>mapred.reducer.class</name>
+                    <value>hadoop.dev.wordcount.mapred.SumReducer</value>
+                </property>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>${inputDir}</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>${wordCountOutputDir}</value>
+                </property>
+            </configuration>
+        </map-reduce>
+        <ok to="sort-node"/>
+        <error to="fail"/>
+    </action>
+    <action name="sort-node">
+        <map-reduce>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <prepare>
+                <delete path="${outputDir}"/>
+            </prepare>
+            <configuration>
+                <property>
+                    <name>mapred.mapper.class</name>
+                    <value>hadoop.dev.wordcount.mapred.SortWordCountMapper</value>
+                </property>
+                <property>
+                    <name>mapred.input.format.class</name>
+                    <value>org.apache.hadoop.mapred.KeyValueTextInputFormat</value>
+                </property>
+                <property>
+                    <name>mapred.output.key.comparator.class</name>
+                    <value>org.apache.hadoop.io.LongWritable$DecreasingComparator</value>
+                </property>
+                <property>
+                    <name>mapred.mapoutput.key.class</name>
+                    <value>org.apache.hadoop.io.LongWritable</value>
+                </property>
+                <property>
+                    <name>mapred.mapoutput.value.class</name>
+                    <value>org.apache.hadoop.io.Text</value>
+                </property>
+                <property>
+                    <name>mapred.reducer.class</name>
+                    <value>org.apache.hadoop.mapred.lib.IdentityReducer</value>
+                </property>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>${wordCountOutputDir}</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>${outputDir}</value>
+                </property>
+            </configuration>
+        </map-reduce>
+        <ok to="end"/>
+        <error to="fail"/>
+    </action>
+    <kill name="fail">
+        <message>Map/Reduce failed, error message[${wf:errorMessage(wf:lastErrorNode())}]</message>
+    </kill>
+    <end name="end"/>
+</workflow-app>
